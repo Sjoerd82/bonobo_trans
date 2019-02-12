@@ -5,6 +5,7 @@
 
 .. image:: logo.png
    :align: center
+   :alt: logo
    :height: 128px
    :width: 128px
 
@@ -17,6 +18,11 @@
    
 Transformations
 ---------------
+
+.. toctree::
+   :maxdepth: 2
+
+   transformations
 
 - :doc:`source/source`
 - :doc:`source/target`
@@ -34,7 +40,7 @@ Requirements
 Installation
 ------------
 
-Install bonobo-trans by running:
+Install bonobo-trans by running::
 
     $ pip install bonobo-trans
 
