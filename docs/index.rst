@@ -11,18 +11,12 @@
 
 **bonobo-trans** provides a set of ETL transformations for the `Bonobo ETL toolkit`_.
 
-.. _Bonobo ETL toolkit: http://www.bonobo-project.org
+.. _Bonobo ETL toolkit: http://www.bonobo-project.org  
 
-.. toctree::
-   :maxdepth: 2
-   
+.. toctree
+  
 Transformations
 ---------------
-
-.. toctree::
-   :maxdepth: 2
-
-   transformations
 
 - :doc:`source/source`
 - :doc:`source/target`
@@ -33,6 +27,7 @@ Transformations
 
 Requirements
 ------------
+
 - bonobo 0.6.3
 - pandas
 - sqlalchemy
@@ -46,13 +41,16 @@ Install bonobo-trans by running::
 
 Contribute
 ----------
-
+   
 - We need a code review!
+- ReadTheDocs TOC is missing structure (and I seem to be unable to figure this out).
+
 
 Support
 -------
 
 If you are having issues, please let me know.
+I can be reached via Slack's Direct Messaging on bonobo-etl.slack.com
 
 License
 -------
