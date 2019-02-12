@@ -36,13 +36,12 @@ Installation
 
 Install bonobo-trans by running:
 
-    pip install bonobo-trans
+    $ pip install bonobo-trans
 
 Contribute
 ----------
 
-- Issue Tracker: github.com/$project/$project/issues
-- Source Code: github.com/$project/$project
+- We need a code review!
 
 Support
 -------
