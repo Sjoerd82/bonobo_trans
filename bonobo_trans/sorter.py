@@ -196,8 +196,8 @@ class Sorter(Configurable):
 		buffer = yield []
 		
 		# Teardown; all rows received...
-		df_sorter = pd.DataFrame(buffer)		
-		df_sorter.sort_values(sort_key, ascending=sort_dirs, na_position=na_position, inplace=True)
+		df_sorter = pd.DataFrame(buffer)
+		df_sorter.sort_values(sort_keys, ascending=sort_dirs, na_position=na_position, inplace=True)
 		
 		# apply distinct
 		if self.distinct == self.SRT_DUP_DISTINCT_ROW:
