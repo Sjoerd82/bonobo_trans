@@ -129,18 +129,18 @@ class DbSource(Configurable):
 	"""
 
 	engine = Service('sqlalchemy.engine')
-	table_name	 = Option(required=True, type=str)
-	sql_select	 = Option(required=False)
-	sql_pre		 = Option(required=False)
-	sql_filter	 = Option(required=False)
-	bp_select	 = Option(required=False, type=dict)
-	bp_pre_sql	 = Option(required=False, type=dict)
+	table_name   = Option(required=True, type=str)
+	sql_select   = Option(required=False)
+	sql_pre	     = Option(required=False)
+	sql_filter   = Option(required=False)
+	bp_select    = Option(required=False, type=dict, default={})
+	bp_pre_sql   = Option(required=False, type=dict, default={})
 	ordered_cols = Option(required=False)
-	verbose_sql	 = Option(required=False, type=bool, default=False)
+	verbose_sql  = Option(required=False, type=bool, default=False)
 	verbose_data = Option(required=False, type=bool, default=False)
-	streaming	 = Option(required=False, type=bool, default=False)
+	streaming    = Option(required=False, type=bool, default=False)
 	row_counters = Option(required=False, type=bool, default=True)
-	keep_alive	 = Option(required=False, type=bool, default=False)
+	keep_alive   = Option(required=False, type=bool, default=False)
 
 	@ContextProcessor
 	def setup(self, context, *, engine):
