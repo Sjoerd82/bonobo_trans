@@ -1,5 +1,7 @@
+import copy
 import logging
 from queue import Queue
+import statistics
 
 from bonobo.config import Configurable, ContextProcessor, Option, Service
 from bonobo.config import use_context
@@ -174,15 +176,65 @@ class Aggregator(Configurable):
 	AGG_STDDEV     = 8
 	AGG_VARIANCE   = 9
 	AGG_COUNT      = 10
-
-	buffer_size = 1000 #Option(int, required=False, default=1000)  # type: int
 	
 	group        = Option(required=True,  type=list)
 	aggregations = Option(required=True,  type=dict)
 	name         = Option(required=False, type=str,  default="untitled")
 	null_is_zero = Option(required=False, type=bool, default=False)
 	return_all   = Option(required=False, type=bool, default=False)	
+	
+	def _aggregate(self, group_rows):
+
+		agg_out_columns = {}
+	
+		# list of values
+		agg_lov = []
+		for group_row in group_rows:
+			agg_lov.append(group_row['qtty'])	#TODO!!!!!!!!!!!!!!!!!
+
+		#if needs_sum:
+		self.agg_sum = sum(agg_lov)
+
+		# calculations
+		for agg_col_out, agg_spec in self.aggregations.items():
+			for agg_type, agg_col in agg_spec.items():
 			
+				if agg_type == self.AGG_MIN:
+					agg_out_columns[agg_col_out] = min(agg_lov)
+
+				elif agg_type == self.AGG_MAX:
+					agg_out_columns[agg_col_out] = max(agg_lov)
+					
+				elif agg_type == self.AGG_FIRST:
+					agg_out_columns[agg_col_out] = group_rows[0][agg_col]
+					
+				elif agg_type == self.AGG_LAST:
+					agg_out_columns[agg_col_out] = group_rows[-1][agg_col]
+					
+				elif agg_type == self.AGG_AVG:
+					agg_out_columns[agg_col_out] = self.agg_sum / self.agg_count
+					
+				elif agg_type == self.AGG_MEDIAN:
+					agg_out_columns[agg_col_out] = statistics.median(agg_lov)
+					
+				elif agg_type == self.AGG_PERCENTILE:
+					agg_out_columns[agg_col_out] = None #TODO
+					
+				elif agg_type == self.AGG_SUM:
+					agg_out_columns[agg_col_out] = self.agg_sum
+					
+				elif agg_type == self.AGG_STDDEV:
+					agg_out_columns[agg_col_out] = statistics.stdev(agg_lov)
+					
+				elif agg_type == self.AGG_VARIANCE:
+					agg_out_columns[agg_col_out] = statistics.variance(agg_lov)
+					
+				elif agg_type == self.AGG_COUNT:
+					agg_out_columns[agg_col_out] = self.agg_count
+					
+		return agg_out_columns
+
+	
 	@ContextProcessor
 	def create_buffer(self, context):
 		"""Setup the transformation.
@@ -198,41 +250,143 @@ class Aggregator(Configurable):
 			?
 		"""
 		
-		prev_row = {}
-		sum = 0
+		self.agg_sum = 0
+		self.agg_count = 0
+				
+		key_row = []
+		key_prev_row = []
+
+		group_rows = []
+		
+		needs_count = True
+		needs_sum = True
+		needs_lov = True
+		
+		# validate aggregations
+		for agg_name, agg_spec in self.aggregations.items():
+
+			if not isinstance(agg_spec, dict):
+				raise UnrecoverableError("[AGG_{0}] ERROR: 'aggregations': Invalid aggregation specification: {1}. Must be a dictionary.".format(self.name, agg_spec))
+			
+			# disabled for now
+			for agg_type, agg_col in agg_spec.items():
+				pass
+			#	if agg_type not in (self.AGG_SUM, self.AGG_STDDEV):
+			#		raise UnrecoverableError("[AGG_{0}] ERROR: 'aggregations': Invalid aggregation specification: ({1}).".format(self.name, agg_name))
+
+			
 		
 		# fill buffer
 		buffer = yield Queue()
 		
 		# process buffer
-		for row in self.commit(buffer, force=True): 
+		for row in self.commit(buffer, force=True):
 			
-			if prev_row and row['id'] != prev_row['id']:
-				yield_row = {**prev_row, 'sum': sum}
-				prev_row = row
-				sum = row['value']
-				context.send(yield_row)
+			key_row = []
+			for col in self.group:
+				key_row.append(row[col])
+			
+			if not key_prev_row:
+				#
+				# FIRST ROW
+				#
+				group_rows.append({**row})
+				# for agg in aggregations
+				
+				# check if all required columns are present in row (we only check the first row)
+				for agg_name, agg_spec in self.aggregations.items():
+					for agg_type, agg_col in agg_spec.items():
+						if agg_col not in row:
+							raise UnrecoverableError("[AGG_{0}] ERROR: 'aggregations': Column '{1}' not found in row.".format(self.name, agg_col))
+							
+						# TODO: optimize by checking in advance if an LOV, SUM or COUNT is required
+						# for now, let's always calculate them:
+						#needs_count = False
+						#needs_sum = False
+						#needs_lov = False
+
+				
+			if key_prev_row and key_prev_row != key_row:
+				#
+				# KEY CHANGE
+				#
+				
+				agg_out_columns = self._aggregate(group_rows)
+				
+				# add aggregations to row(s)
+				if self.return_all:
+					for group_row in group_rows:
+						group_row.update(agg_out_columns) # will this perform optimally?
+					yield_rows = copy.deepcopy(group_rows) # deepcopy, because group_rows will soon be reset to []
+					
+				else:
+					yield_rows = [{**group_rows[-1], **agg_out_columns}]
+				
+				#
+				# restart new group
+				#
+				
+				# first row:
+				group_rows = [{**row}]
+				
+				if needs_count:
+					self.agg_count += 1
+				
+				# create the "previous row key"
+				key_prev_row = []
+				for col in self.group:
+					key_prev_row.append(row[col])
+				
+				#
+				# yield one / all aggregated record
+				#
+				for yield_row in yield_rows:
+					context.send(yield_row)
 				
 			else:
-				sum += int(row['value'])
-				prev_row = row
-
+				#
+				# same group
+				#
+				group_rows.append({**row})
+								
+				# increase aggregations
+				if needs_count:
+					self.agg_count += 1
+								
+				# create the "previous row key"
+				key_prev_row = []
+				for col in self.group:
+					key_prev_row.append(row[col])
+		
+		
 		# teardown; send out last row
-		context.send({**prev_row, 'sum': sum})
+		
+		# calculations
+		agg_out_columns = self._aggregate(group_rows)
+		
+		# add aggregations to row(s)
+		if self.return_all:
+			for group_row in group_rows:
+				group_row.update(agg_out_columns) # will this perform optimally?
+			yield_rows = group_rows
+			
+		else:
+			yield_rows = [{**group_rows[-1], **agg_out_columns}]
+					
+		# yield one / all aggregated record
+		for yield_row in yield_rows:
+			context.send(yield_row)
+	
 	
 	def __call__(self, buffer, context, d_row_in):
 		buffer.put(d_row_in)
-		yield from self.commit(buffer)
-
+		#yield from self.commit(buffer)
 		
 	def commit(self, buffer, force=False):
-		if force or (buffer.qsize() >= self.buffer_size):
-			while buffer.qsize() > 0:
-				try:
-					yield buffer.get()
-				
-				except Exception as exc:
-					yield exc
-					
-	
-	
+		#if force or (buffer.qsize() >= self.buffer_size):
+		while buffer.qsize() > 0:
+			try:
+				yield buffer.get()
+			
+			except Exception as exc:
+				yield exc
