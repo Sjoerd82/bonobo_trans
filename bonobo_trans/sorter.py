@@ -205,8 +205,11 @@ class Sorter(Configurable):
 		elif self.distinct in (self.SRT_DUP_KEY_FIRST, self.SRT_DUP_KEY_LAST):
 			df_sorter.drop_duplicates(subset=['A', 'B'], keep=dup_key_keep, inplace=True)
 		
+		# replace nan with None
+		df_sorter_none = df_sorter.where((pd.notnull(df_sorter)), None) # , inplace=True not possible
+		
 		# send the rows out
-		for ix, row in df_sorter.iterrows():
+		for ix, row in df_sorter_none.iterrows():
 			d_row_out = {**row}
 			context.send(d_row_out)
 	
