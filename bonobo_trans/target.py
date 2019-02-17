@@ -157,6 +157,7 @@ class DbTarget(Configurable):
 	sql_pre		 = Option(required=False)
 	bp_update	 = Option(required=False, type=dict)
 	bp_pre_sql	 = Option(required=False, type=dict)
+	name         = Option(required=False, type=str,  default="untitled")
 	verbose_sql	 = Option(required=False, type=bool, default=False)
 	verbose_data = Option(required=False, type=bool, default=False)
 	truncate     = Option(required=False, type=bool, default=False)
@@ -174,11 +175,11 @@ class DbTarget(Configurable):
 		try:
 			connection = engine.connect()
 		except OperationalError as exc:
-			raise UnrecoverableError('Could not create SQLAlchemy connection: {}.'.format(str(exc).replace('\n', ''))) from exc
+			raise UnrecoverableError("[TGT_{0}] Could not create SQLAlchemy connection: {1}.".format(self.name, str(exc).replace('\n', ''))) from exc
 			
 		if not engine.dialect.has_table(engine, self.table_name):
 			#raise error
-			print("[DbTarget] ERROR: Table '{}' does not exist.".format(self.table_name))
+			print("[TGT_{0}] ERROR: Table '{1}' does not exist.".format(self.name, self.table_name))
 
 		self.rows_inserted = 0
 		self.rows_updated = 0
@@ -263,11 +264,11 @@ class DbTarget(Configurable):
 	
 		# INSERT
 		if self.sql_insert is not None:
-			self.sql_insert = self.sql_insert.values(d_target)
+			local_sql_insert = self.sql_insert.values(d_target)
 		
 		# UPDATE
 		if self.sql_update is not None:
-			self.sql_update = self.sql_update.values(d_target)
+			local_sql_update = self.sql_update.values(d_target)
 		
 		# todo: check upsert strategy
 		# TGT_UPSERT_TRY_INSERT
@@ -275,10 +276,10 @@ class DbTarget(Configurable):
 		with connection:
 			try:
 				if not self.dry_run:
-					connection.execute(self.sql_insert)
+					connection.execute(local_sql_insert)
 					
 				if self.verbose_sql and self.rows_inserted == 0:
-					print(self.sql_insert)
+					print(local_sql_insert)
 					
 				self.rows_inserted += 1
 				

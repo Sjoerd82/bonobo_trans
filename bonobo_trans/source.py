@@ -29,6 +29,7 @@ class DbSource(Configurable):
 			-	**sql_filter**		*(str or sqlalchemy.where)*
 			-	**bp_select**		*(dict)*
 			-	**bp_pre_sql**		*(dict)*
+			-	**distinct**		*(bool)*
 			-	**ordered_cols**	*(int or list of str)*
 			-	**verbose_sql**		*(bool)*, default: False
 			-	**verbose_data**	*(bool)*, default: False
@@ -50,7 +51,11 @@ class DbSource(Configurable):
 			.. important::
 				It is not possible to specify an ``sql_filter`` when the ``sql_select`` contains
 				an ORDER BY clause!
-			
+				
+		distinct
+			When True, applies the SQL *distinct* to source query. Not
+			available if the ``sql_select`` is a plain string.
+		
 		ordered_cols
 			An ORDER BY should ideally be specified via the ``ordered_cols`` option
 			rather than via an "ORDER BY"-clause in the ``sql_select`` option.
@@ -88,7 +93,10 @@ class DbSource(Configurable):
 					
 					  sql_select = select([users]).where(users.c.id == bindparam('user_id'))
 					  bp_select = { 'user_id':555 }
-
+				
+		name
+			Name of the transformation, for identification and logging purposes.
+			
 		verbose_sql
 			If 'verbose_sql' is True, the generated SQL statement will be printed.
 
@@ -135,7 +143,9 @@ class DbSource(Configurable):
 	sql_filter   = Option(required=False)
 	bp_select    = Option(required=False, type=dict, default={})
 	bp_pre_sql   = Option(required=False, type=dict, default={})
+	distinct     = Option(required=False, type=bool, default=False)
 	ordered_cols = Option(required=False)
+	name         = Option(required=False, type=str,  default="untitled")
 	verbose_sql  = Option(required=False, type=bool, default=False)
 	verbose_data = Option(required=False, type=bool, default=False)
 	streaming    = Option(required=False, type=bool, default=False)
@@ -171,11 +181,11 @@ class DbSource(Configurable):
 		try:
 			connection = engine.connect()
 		except OperationalError as exc:
-			raise UnrecoverableError('Could not create SQLAlchemy connection: {}.'.format(str(exc).replace('\n', ''))) from exc
+			raise UnrecoverableError("[SRC_{0}] Could not create SQLAlchemy connection: {1}.".format(self.name, str(exc).replace('\n', ''))) from exc
 
 		if not engine.dialect.has_table(engine, self.table_name):
 			#raise error
-			print("[DbSource] ERROR: Table '{}' does not exist.".format(self.table_name))
+			print("[SRC_{0}] ERROR: Table '{1}' does not exist.".format(self.name, self.table_name))
 				
 		meta = sqlalchemy.MetaData()
 		meta.reflect(bind=engine)
@@ -202,6 +212,11 @@ class DbSource(Configurable):
 		# sql_filter
 		# ordered_cols
 
+		if self.distinct and isinstance(self.sql_select, str):
+			raise UnrecoverableError("[SRC_{0}] Not possible to request 'distinct' on a textual SQL query.".format(self.name))
+		elif self.distinct:
+			self.sql_select = self.sql_select.distinct()
+		
 		if self.keep_alive:
 			with connection:
 				yield connection
@@ -214,7 +229,7 @@ class DbSource(Configurable):
 	#def __call__(self, connection, context, d_row_in, engine):
 
 		if self.verbose_sql:
-			print("Source select: {0}; Bind parameters: {1}".format(self.sql_select, self.bp_select))
+			print("[SRC_{0}] Source select: {1}; Bind parameters: {2}".format(self.name, self.sql_select, self.bp_select))
 
 		if not self.keep_alive:
 			connection = engine.connect()

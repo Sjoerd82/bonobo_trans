@@ -33,7 +33,7 @@ class Aggregator(Configurable):
 	**Option descriptions:**
 		
 		name
-			Name of the transformation, for identification and logging purposes.	
+			Name of the transformation, for identification and logging purposes.
 			
 		null_is_zero
 			Set to true to treat NULL as zero.
