@@ -5,9 +5,9 @@ List of transformations:
 .. toctree::
     :maxdepth: 2
     
-    source/aggregator.rst
-    source/lookup.rst
-    source/sequencer.rst
-    source/sorter.rst
-    source/source.rst
-    source/target.rst
+    source/aggregator
+    source/lookup
+    source/sequencer
+    source/sorter
+    source/source
+    source/target
