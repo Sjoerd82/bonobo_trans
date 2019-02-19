@@ -14,6 +14,8 @@
 .. _Bonobo ETL toolkit: http://www.bonobo-project.org  
 
 .. toctree
+   :maxdepth: 2
+   transformations
   
 Transformations
 ---------------
