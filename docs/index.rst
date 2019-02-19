@@ -16,8 +16,10 @@
 .. toctree
    :maxdepth: 2
    
+   installation
    transformations
-  
+
+
 Transformations
 ---------------
 
